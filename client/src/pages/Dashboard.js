@@ -1,0 +1,464 @@
+import React, { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
+import { 
+  BarChart3, 
+  Users, 
+  MessageCircle, 
+  TrendingUp, 
+  Globe, 
+  Calendar,
+  Activity,
+  AlertTriangle,
+  CheckCircle,
+  Clock,
+  Download,
+  Filter,
+  RefreshCw
+} from 'lucide-react';
+import { 
+  BarChart, 
+  Bar, 
+  XAxis, 
+  YAxis, 
+  CartesianGrid, 
+  Tooltip, 
+  ResponsiveContainer,
+  LineChart,
+  Line,
+  PieChart,
+  Pie,
+  Cell
+} from 'recharts';
+import toast from 'react-hot-toast';
+import { analyticsAPI } from '../utils/api';
+
+const Dashboard = () => {
+  const [analytics, setAnalytics] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [timeRange, setTimeRange] = useState('7d');
+  const [selectedMetric, setSelectedMetric] = useState('queries');
+
+  useEffect(() => {
+    fetchAnalytics();
+  }, [timeRange]);
+
+  const fetchAnalytics = async () => {
+    try {
+      setLoading(true);
+      const data = await analyticsAPI.getOverview(timeRange);
+      setAnalytics(data);
+    } catch (error) {
+      console.error('Error fetching analytics:', error);
+      // Fallback to mock data for demo
+      setAnalytics(mockAnalytics);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const mockAnalytics = {
+    overview: {
+      totalQueries: 12847,
+      activeUsers: 3421,
+      avgResponseTime: 1.2,
+      satisfactionRate: 94.5,
+      topCategories: [
+        { name: 'General Health', count: 3245, percentage: 25.3 },
+        { name: 'Disease Prevention', count: 2891, percentage: 22.5 },
+        { name: 'Vaccination', count: 2156, percentage: 16.8 },
+        { name: 'Child Health', count: 1987, percentage: 15.5 },
+        { name: 'Emergency Care', count: 1234, percentage: 9.6 }
+      ]
+    },
+    queryTrends: [
+      { date: '2024-01-15', queries: 145, users: 89 },
+      { date: '2024-01-16', queries: 167, users: 102 },
+      { date: '2024-01-17', queries: 189, users: 134 },
+      { date: '2024-01-18', queries: 201, users: 156 },
+      { date: '2024-01-19', queries: 234, users: 178 },
+      { date: '2024-01-20', queries: 267, users: 198 },
+      { date: '2024-01-21', queries: 289, users: 223 }
+    ],
+    languageDistribution: [
+      { name: 'English', value: 45, color: '#3B82F6' },
+      { name: 'Hindi', value: 32, color: '#10B981' },
+      { name: 'Bengali', value: 15, color: '#F59E0B' },
+      { name: 'Telugu', value: 8, color: '#EF4444' }
+    ],
+    responseAccuracy: [
+      { category: 'General Health', accuracy: 96.2 },
+      { category: 'Disease Prevention', accuracy: 94.8 },
+      { category: 'Vaccination', accuracy: 98.1 },
+      { category: 'Child Health', accuracy: 92.5 },
+      { category: 'Emergency Care', accuracy: 89.3 }
+    ],
+    recentActivity: [
+      { id: 1, type: 'query', message: 'User asked about dengue symptoms', time: '2 minutes ago', status: 'resolved' },
+      { id: 2, type: 'alert', message: 'New outbreak alert for malaria in Bihar', time: '15 minutes ago', status: 'active' },
+      { id: 3, type: 'query', message: 'Vaccination schedule inquiry', time: '23 minutes ago', status: 'resolved' },
+      { id: 4, type: 'system', message: 'Daily backup completed successfully', time: '1 hour ago', status: 'completed' },
+      { id: 5, type: 'query', message: 'Emergency care guidance requested', time: '1 hour ago', status: 'resolved' }
+    ]
+  };
+
+  const StatCard = ({ title, value, change, icon: Icon, color }) => (
+    <motion.div
+      whileHover={{ y: -5 }}
+      className="card p-6"
+    >
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-sm font-medium text-gray-600">{title}</p>
+          <p className="text-2xl font-bold text-gray-900 mt-1">{value}</p>
+          {change && (
+            <div className={`flex items-center mt-2 text-sm ${
+              change > 0 ? 'text-green-600' : 'text-red-600'
+            }`}>
+              <TrendingUp className={`w-4 h-4 mr-1 ${
+                change < 0 ? 'transform rotate-180' : ''
+              }`} />
+              <span>{Math.abs(change)}% from last week</span>
+            </div>
+          )}
+        </div>
+        <div className={`p-3 rounded-2xl bg-gradient-to-br ${color}`}>
+          <Icon className="w-6 h-6 text-white" />
+        </div>
+      </div>
+    </motion.div>
+  );
+
+  const ActivityItem = ({ activity }) => {
+    const getIcon = (type) => {
+      switch (type) {
+        case 'query': return <MessageCircle className="w-4 h-4" />;
+        case 'alert': return <AlertTriangle className="w-4 h-4" />;
+        case 'system': return <Activity className="w-4 h-4" />;
+        default: return <CheckCircle className="w-4 h-4" />;
+      }
+    };
+
+    const getStatusColor = (status) => {
+      switch (status) {
+        case 'resolved': return 'text-green-600 bg-green-100';
+        case 'active': return 'text-orange-600 bg-orange-100';
+        case 'completed': return 'text-blue-600 bg-blue-100';
+        default: return 'text-gray-600 bg-gray-100';
+      }
+    };
+
+    return (
+      <div className="flex items-center space-x-3 p-3 hover:bg-gray-50 rounded-lg transition-colors">
+        <div className={`p-2 rounded-lg ${
+          activity.type === 'query' ? 'bg-blue-100 text-blue-600' :
+          activity.type === 'alert' ? 'bg-orange-100 text-orange-600' :
+          'bg-gray-100 text-gray-600'
+        }`}>
+          {getIcon(activity.type)}
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm text-gray-900 truncate">{activity.message}</p>
+          <div className="flex items-center space-x-2 mt-1">
+            <Clock className="w-3 h-3 text-gray-400" />
+            <span className="text-xs text-gray-500">{activity.time}</span>
+            <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${getStatusColor(activity.status)}`}>
+              {activity.status}
+            </span>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen pt-16 bg-gradient-to-br from-blue-50 via-white to-green-50 flex items-center justify-center">
+        <div className="text-center">
+          <RefreshCw className="w-8 h-8 animate-spin text-blue-500 mx-auto mb-4" />
+          <p className="text-gray-600">Loading dashboard...</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen pt-16 bg-gradient-to-br from-blue-50 via-white to-green-50">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Header */}
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-8"
+        >
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900 mb-2">Analytics Dashboard</h1>
+              <p className="text-gray-600">Monitor chatbot performance and user engagement</p>
+            </div>
+            
+            <div className="flex items-center space-x-3 mt-4 sm:mt-0">
+              <select
+                value={timeRange}
+                onChange={(e) => setTimeRange(e.target.value)}
+                className="px-4 py-2 bg-white border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="24h">Last 24 Hours</option>
+                <option value="7d">Last 7 Days</option>
+                <option value="30d">Last 30 Days</option>
+                <option value="90d">Last 90 Days</option>
+              </select>
+              
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={fetchAnalytics}
+                className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                <RefreshCw className="w-4 h-4" />
+                <span>Refresh</span>
+              </motion.button>
+              
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                className="flex items-center space-x-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+              >
+                <Download className="w-4 h-4" />
+                <span>Export</span>
+              </motion.button>
+            </div>
+          </div>
+        </motion.div>
+
+        {/* Stats Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          <StatCard
+            title="Total Queries"
+            value={analytics?.overview?.totalQueries?.toLocaleString() || '0'}
+            change={12.5}
+            icon={MessageCircle}
+            color="from-blue-500 to-blue-600"
+          />
+          <StatCard
+            title="Active Users"
+            value={analytics?.overview?.activeUsers?.toLocaleString() || '0'}
+            change={8.2}
+            icon={Users}
+            color="from-green-500 to-green-600"
+          />
+          <StatCard
+            title="Avg Response Time"
+            value={`${analytics?.overview?.avgResponseTime || 0}s`}
+            change={-5.1}
+            icon={Clock}
+            color="from-purple-500 to-purple-600"
+          />
+          <StatCard
+            title="Satisfaction Rate"
+            value={`${analytics?.overview?.satisfactionRate || 0}%`}
+            change={2.3}
+            icon={CheckCircle}
+            color="from-orange-500 to-orange-600"
+          />
+        </div>
+
+        {/* Charts Row */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+          {/* Query Trends */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="card p-6"
+          >
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-lg font-semibold text-gray-900">Query Trends</h3>
+              <div className="flex items-center space-x-2">
+                <div className="flex items-center space-x-1">
+                  <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
+                  <span className="text-sm text-gray-600">Queries</span>
+                </div>
+                <div className="flex items-center space-x-1">
+                  <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                  <span className="text-sm text-gray-600">Users</span>
+                </div>
+              </div>
+            </div>
+            <ResponsiveContainer width="100%" height={300}>
+              <LineChart data={analytics?.queryTrends || []}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                <XAxis 
+                  dataKey="date" 
+                  stroke="#6b7280"
+                  fontSize={12}
+                  tickFormatter={(value) => new Date(value).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                />
+                <YAxis stroke="#6b7280" fontSize={12} />
+                <Tooltip 
+                  contentStyle={{ 
+                    backgroundColor: 'white', 
+                    border: '1px solid #e5e7eb', 
+                    borderRadius: '8px',
+                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+                  }}
+                />
+                <Line 
+                  type="monotone" 
+                  dataKey="queries" 
+                  stroke="#3b82f6" 
+                  strokeWidth={3}
+                  dot={{ fill: '#3b82f6', strokeWidth: 2, r: 4 }}
+                />
+                <Line 
+                  type="monotone" 
+                  dataKey="users" 
+                  stroke="#10b981" 
+                  strokeWidth={3}
+                  dot={{ fill: '#10b981', strokeWidth: 2, r: 4 }}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </motion.div>
+
+          {/* Language Distribution */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="card p-6"
+          >
+            <h3 className="text-lg font-semibold text-gray-900 mb-6">Language Distribution</h3>
+            <ResponsiveContainer width="100%" height={300}>
+              <PieChart>
+                <Pie
+                  data={analytics?.languageDistribution || []}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={60}
+                  outerRadius={120}
+                  paddingAngle={5}
+                  dataKey="value"
+                >
+                  {analytics?.languageDistribution?.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.color} />
+                  ))}
+                </Pie>
+                <Tooltip 
+                  contentStyle={{ 
+                    backgroundColor: 'white', 
+                    border: '1px solid #e5e7eb', 
+                    borderRadius: '8px',
+                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+                  }}
+                />
+              </PieChart>
+            </ResponsiveContainer>
+            <div className="grid grid-cols-2 gap-4 mt-4">
+              {analytics?.languageDistribution?.map((lang, index) => (
+                <div key={index} className="flex items-center space-x-2">
+                  <div 
+                    className="w-3 h-3 rounded-full" 
+                    style={{ backgroundColor: lang.color }}
+                  ></div>
+                  <span className="text-sm text-gray-600">{lang.name}</span>
+                  <span className="text-sm font-medium text-gray-900">{lang.value}%</span>
+                </div>
+              ))}
+            </div>
+          </motion.div>
+        </div>
+
+        {/* Bottom Row */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Top Categories */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="card p-6"
+          >
+            <h3 className="text-lg font-semibold text-gray-900 mb-6">Top Categories</h3>
+            <div className="space-y-4">
+              {analytics?.overview?.topCategories?.map((category, index) => (
+                <div key={index} className="flex items-center justify-between">
+                  <div className="flex-1">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-sm font-medium text-gray-900">{category.name}</span>
+                      <span className="text-sm text-gray-500">{category.count}</span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div 
+                        className="bg-gradient-to-r from-blue-500 to-purple-600 h-2 rounded-full transition-all duration-300"
+                        style={{ width: `${category.percentage}%` }}
+                      ></div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </motion.div>
+
+          {/* Response Accuracy */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="card p-6"
+          >
+            <h3 className="text-lg font-semibold text-gray-900 mb-6">Response Accuracy</h3>
+            <ResponsiveContainer width="100%" height={200}>
+              <BarChart data={analytics?.responseAccuracy || []}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                <XAxis 
+                  dataKey="category" 
+                  stroke="#6b7280"
+                  fontSize={10}
+                  angle={-45}
+                  textAnchor="end"
+                  height={60}
+                />
+                <YAxis stroke="#6b7280" fontSize={12} />
+                <Tooltip 
+                  contentStyle={{ 
+                    backgroundColor: 'white', 
+                    border: '1px solid #e5e7eb', 
+                    borderRadius: '8px',
+                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+                  }}
+                />
+                <Bar 
+                  dataKey="accuracy" 
+                  fill="url(#colorGradient)"
+                  radius={[4, 4, 0, 0]}
+                />
+                <defs>
+                  <linearGradient id="colorGradient" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.8}/>
+                    <stop offset="95%" stopColor="#1d4ed8" stopOpacity={0.8}/>
+                  </linearGradient>
+                </defs>
+              </BarChart>
+            </ResponsiveContainer>
+          </motion.div>
+
+          {/* Recent Activity */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="card p-6"
+          >
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-lg font-semibold text-gray-900">Recent Activity</h3>
+              <button className="text-blue-600 hover:text-blue-800 text-sm font-medium">
+                View All
+              </button>
+            </div>
+            <div className="space-y-1 max-h-64 overflow-y-auto custom-scrollbar">
+              {analytics?.recentActivity?.map((activity) => (
+                <ActivityItem key={activity.id} activity={activity} />
+              ))}
+            </div>
+          </motion.div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default Dashboard;

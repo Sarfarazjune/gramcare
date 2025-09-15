@@ -1,0 +1,367 @@
+import React, { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  LineChart,
+  Line,
+  PieChart,
+  Pie,
+  Cell,
+  Area,
+  AreaChart
+} from 'recharts';
+import {
+  Users,
+  MessageSquare,
+  Globe,
+  TrendingUp,
+  AlertTriangle,
+  Clock,
+  Download,
+  Filter,
+  Calendar,
+  Eye,
+  UserCheck,
+  Languages
+} from 'lucide-react';
+import toast from 'react-hot-toast';
+
+const AdminDashboard = () => {
+  const [analytics, setAnalytics] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [timeRange, setTimeRange] = useState('7d');
+  const [selectedMetric, setSelectedMetric] = useState('queries');
+
+  // Mock analytics data
+  const mockAnalytics = {
+    overview: {
+      totalQueries: 15420,
+      activeUsers: 3240,
+      avgResponseTime: 1.2,
+      accuracyRate: 87.5,
+      totalAlerts: 156,
+      languagesSupported: 12
+    },
+    queryTrends: [
+      { date: '2024-01-01', queries: 450, users: 120, accuracy: 85 },
+      { date: '2024-01-02', queries: 520, users: 145, accuracy: 87 },
+      { date: '2024-01-03', queries: 480, users: 135, accuracy: 86 },
+      { date: '2024-01-04', queries: 610, users: 165, accuracy: 89 },
+      { date: '2024-01-05', queries: 580, users: 155, accuracy: 88 },
+      { date: '2024-01-06', queries: 650, users: 180, accuracy: 90 },
+      { date: '2024-01-07', queries: 720, users: 195, accuracy: 91 }
+    ],
+    languageDistribution: [
+      { language: 'English', queries: 6500, percentage: 42.2, color: '#3B82F6' },
+      { language: 'Hindi', queries: 4200, percentage: 27.3, color: '#10B981' },
+      { language: 'Bengali', queries: 2100, percentage: 13.6, color: '#F59E0B' },
+      { language: 'Telugu', queries: 1500, percentage: 9.7, color: '#EF4444' },
+      { language: 'Tamil', queries: 800, percentage: 5.2, color: '#8B5CF6' },
+      { language: 'Others', queries: 320, percentage: 2.0, color: '#6B7280' }
+    ],
+    topQueries: [
+      { query: 'COVID-19 symptoms', count: 1250, category: 'Disease Info' },
+      { query: 'Vaccination schedule', count: 980, category: 'Prevention' },
+      { query: 'Fever treatment', count: 850, category: 'Treatment' },
+      { query: 'Child immunization', count: 720, category: 'Prevention' },
+      { query: 'Diabetes management', count: 650, category: 'Chronic Care' }
+    ],
+    alertsData: [
+      { month: 'Jan', critical: 12, high: 25, medium: 45, low: 30 },
+      { month: 'Feb', critical: 8, high: 20, medium: 38, low: 25 },
+      { month: 'Mar', critical: 15, high: 30, medium: 50, low: 35 },
+      { month: 'Apr', critical: 10, high: 22, medium: 42, low: 28 },
+      { month: 'May', critical: 18, high: 35, medium: 55, low: 40 },
+      { month: 'Jun', critical: 6, high: 18, medium: 35, low: 22 }
+    ],
+    userEngagement: {
+      dailyActiveUsers: 3240,
+      weeklyActiveUsers: 18500,
+      monthlyActiveUsers: 65000,
+      avgSessionDuration: '4.2 min',
+      returnUserRate: 68.5
+    }
+  };
+
+  useEffect(() => {
+    fetchAnalytics();
+  }, [timeRange]);
+
+  const fetchAnalytics = async () => {
+    setLoading(true);
+    try {
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      setAnalytics(mockAnalytics);
+    } catch (error) {
+      console.error('Error fetching analytics:', error);
+      toast.error('Failed to load analytics data');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const exportData = () => {
+    toast.success('Analytics data exported successfully!');
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading analytics...</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 py-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* Header */}
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-8"
+        >
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900 mb-2">Admin Dashboard</h1>
+              <p className="text-gray-600">Monitor GramCare chatbot performance and user engagement</p>
+            </div>
+            <div className="flex items-center gap-4 mt-4 md:mt-0">
+              <select
+                value={timeRange}
+                onChange={(e) => setTimeRange(e.target.value)}
+                className="px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="24h">Last 24 Hours</option>
+                <option value="7d">Last 7 Days</option>
+                <option value="30d">Last 30 Days</option>
+                <option value="90d">Last 90 Days</option>
+              </select>
+              <button
+                onClick={exportData}
+                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                <Download className="w-4 h-4" />
+                Export
+              </button>
+            </div>
+          </div>
+        </motion.div>
+
+        {/* Overview Stats */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6 mb-8"
+        >
+          <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Total Queries</p>
+                <p className="text-2xl font-bold text-gray-900">{analytics.overview.totalQueries.toLocaleString()}</p>
+              </div>
+              <MessageSquare className="w-8 h-8 text-blue-600" />
+            </div>
+          </div>
+
+          <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Active Users</p>
+                <p className="text-2xl font-bold text-gray-900">{analytics.overview.activeUsers.toLocaleString()}</p>
+              </div>
+              <Users className="w-8 h-8 text-green-600" />
+            </div>
+          </div>
+
+          <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Avg Response Time</p>
+                <p className="text-2xl font-bold text-gray-900">{analytics.overview.avgResponseTime}s</p>
+              </div>
+              <Clock className="w-8 h-8 text-orange-600" />
+            </div>
+          </div>
+
+          <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Accuracy Rate</p>
+                <p className="text-2xl font-bold text-gray-900">{analytics.overview.accuracyRate}%</p>
+              </div>
+              <TrendingUp className="w-8 h-8 text-purple-600" />
+            </div>
+          </div>
+
+          <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Total Alerts</p>
+                <p className="text-2xl font-bold text-gray-900">{analytics.overview.totalAlerts}</p>
+              </div>
+              <AlertTriangle className="w-8 h-8 text-red-600" />
+            </div>
+          </div>
+
+          <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Languages</p>
+                <p className="text-2xl font-bold text-gray-900">{analytics.overview.languagesSupported}</p>
+              </div>
+              <Languages className="w-8 h-8 text-indigo-600" />
+            </div>
+          </div>
+        </motion.div>
+
+        {/* Charts Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+          {/* Query Trends */}
+          <motion.div
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            className="bg-white rounded-xl shadow-sm p-6 border border-gray-100"
+          >
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Query Trends</h3>
+            <ResponsiveContainer width="100%" height={300}>
+              <AreaChart data={analytics.queryTrends}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                <XAxis dataKey="date" stroke="#666" fontSize={12} />
+                <YAxis stroke="#666" fontSize={12} />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: 'white',
+                    border: '1px solid #e5e7eb',
+                    borderRadius: '8px'
+                  }}
+                />
+                <Area
+                  type="monotone"
+                  dataKey="queries"
+                  stroke="#3B82F6"
+                  fill="#3B82F6"
+                  fillOpacity={0.1}
+                  strokeWidth={2}
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          </motion.div>
+
+          {/* Language Distribution */}
+          <motion.div
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            className="bg-white rounded-xl shadow-sm p-6 border border-gray-100"
+          >
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Language Distribution</h3>
+            <ResponsiveContainer width="100%" height={300}>
+              <PieChart>
+                <Pie
+                  data={analytics.languageDistribution}
+                  cx="50%"
+                  cy="50%"
+                  outerRadius={100}
+                  dataKey="queries"
+                  label={({ language, percentage }) => `${language} (${percentage}%)`}
+                >
+                  {analytics.languageDistribution.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.color} />
+                  ))}
+                </Pie>
+                <Tooltip />
+              </PieChart>
+            </ResponsiveContainer>
+          </motion.div>
+        </div>
+
+        {/* Bottom Section */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Top Queries */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-white rounded-xl shadow-sm p-6 border border-gray-100"
+          >
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Top Queries</h3>
+            <div className="space-y-4">
+              {analytics.topQueries.map((item, index) => (
+                <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                  <div>
+                    <p className="font-medium text-gray-900">{item.query}</p>
+                    <p className="text-sm text-gray-600">{item.category}</p>
+                  </div>
+                  <span className="text-sm font-semibold text-blue-600">{item.count}</span>
+                </div>
+              ))}
+            </div>
+          </motion.div>
+
+          {/* Alerts by Severity */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-white rounded-xl shadow-sm p-6 border border-gray-100"
+          >
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Alerts by Severity</h3>
+            <ResponsiveContainer width="100%" height={250}>
+              <BarChart data={analytics.alertsData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                <XAxis dataKey="month" stroke="#666" fontSize={12} />
+                <YAxis stroke="#666" fontSize={12} />
+                <Tooltip />
+                <Bar dataKey="critical" stackId="a" fill="#EF4444" />
+                <Bar dataKey="high" stackId="a" fill="#F59E0B" />
+                <Bar dataKey="medium" stackId="a" fill="#10B981" />
+                <Bar dataKey="low" stackId="a" fill="#3B82F6" />
+              </BarChart>
+            </ResponsiveContainer>
+          </motion.div>
+
+          {/* User Engagement */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-white rounded-xl shadow-sm p-6 border border-gray-100"
+          >
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">User Engagement</h3>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <span className="text-gray-600">Daily Active Users</span>
+                <span className="font-semibold text-gray-900">{analytics.userEngagement.dailyActiveUsers.toLocaleString()}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-gray-600">Weekly Active Users</span>
+                <span className="font-semibold text-gray-900">{analytics.userEngagement.weeklyActiveUsers.toLocaleString()}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-gray-600">Monthly Active Users</span>
+                <span className="font-semibold text-gray-900">{analytics.userEngagement.monthlyActiveUsers.toLocaleString()}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-gray-600">Avg Session Duration</span>
+                <span className="font-semibold text-gray-900">{analytics.userEngagement.avgSessionDuration}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-gray-600">Return User Rate</span>
+                <span className="font-semibold text-gray-900">{analytics.userEngagement.returnUserRate}%</span>
+              </div>
+            </div>
+          </motion.div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default AdminDashboard;

@@ -1,0 +1,468 @@
+import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { 
+  AlertTriangle, 
+  MapPin, 
+  Calendar, 
+  Filter, 
+  Search, 
+  Bell, 
+  BellOff,
+  Info,
+  ExternalLink,
+  RefreshCw,
+  TrendingUp,
+  Shield,
+  Users,
+  Clock,
+  Globe
+} from 'lucide-react';
+import toast from 'react-hot-toast';
+import { alertsAPI } from '../utils/api';
+
+const Alerts = () => {
+  const [alerts, setAlerts] = useState([]);
+  const [filteredAlerts, setFilteredAlerts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedSeverity, setSelectedSeverity] = useState('all');
+  const [selectedLocation, setSelectedLocation] = useState('all');
+  const [notificationsEnabled, setNotificationsEnabled] = useState(false);
+  const [lastUpdated, setLastUpdated] = useState(new Date());
+  const [selectedLanguage, setSelectedLanguage] = useState('en');
+  const [supportedLanguages, setSupportedLanguages] = useState([
+    { code: 'en', name: 'English' },
+    { code: 'hi', name: 'हिंदी' },
+    { code: 'bn', name: 'বাংলা' },
+    { code: 'te', name: 'తెలుగు' },
+    { code: 'ta', name: 'தமிழ்' }
+  ]);
+
+  const severityColors = {
+    high: 'from-red-500 to-red-600',
+    medium: 'from-orange-500 to-orange-600',
+    low: 'from-yellow-500 to-yellow-600'
+  };
+
+  const severityBgColors = {
+    high: 'bg-red-50 border-red-200',
+    medium: 'bg-orange-50 border-orange-200',
+    low: 'bg-yellow-50 border-yellow-200'
+  };
+
+  const severityTextColors = {
+    high: 'text-red-800',
+    medium: 'text-orange-800',
+    low: 'text-yellow-800'
+  };
+
+  useEffect(() => {
+    fetchAlerts();
+    const interval = setInterval(fetchAlerts, 300000); // Refresh every 5 minutes
+    return () => clearInterval(interval);
+  }, [selectedLanguage]);
+
+  useEffect(() => {
+    filterAlerts();
+  }, [alerts, searchTerm, selectedSeverity, selectedLocation]);
+
+  const fetchAlerts = async () => {
+    try {
+      setLoading(true);
+      const params = {
+        language: selectedLanguage,
+        limit: '20'
+      };
+      
+      const data = await alertsAPI.getActiveAlerts(params);
+      
+      if (data.success) {
+        setAlerts(data.alerts || []);
+      } else {
+        // Fallback to mock data for demo
+        setAlerts(mockAlerts);
+      }
+      setLastUpdated(new Date());
+    } catch (error) {
+      console.error('Error fetching alerts:', error);
+      toast.error('Failed to fetch alerts. Please try again.');
+      // Fallback to mock data for demo
+      setAlerts(mockAlerts);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const filterAlerts = () => {
+    let filtered = alerts;
+
+    if (searchTerm) {
+      filtered = filtered.filter(alert => 
+        alert.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        alert.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        alert.location.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+
+    if (selectedSeverity !== 'all') {
+      filtered = filtered.filter(alert => alert.severity === selectedSeverity);
+    }
+
+    if (selectedLocation !== 'all') {
+      filtered = filtered.filter(alert => alert.location.toLowerCase().includes(selectedLocation.toLowerCase()));
+    }
+
+    setFilteredAlerts(filtered);
+  };
+
+  const toggleNotifications = async () => {
+    if ('Notification' in window) {
+      if (notificationsEnabled) {
+        setNotificationsEnabled(false);
+        toast.success('Notifications disabled');
+      } else {
+        const permission = await Notification.requestPermission();
+        if (permission === 'granted') {
+          setNotificationsEnabled(true);
+          toast.success('Notifications enabled');
+          new Notification('GramCare Alerts', {
+            body: 'You will now receive health alert notifications',
+            icon: '/favicon.ico'
+          });
+        } else {
+          toast.error('Notification permission denied');
+        }
+      }
+    } else {
+      toast.error('Notifications not supported in this browser');
+    }
+  };
+
+  const formatDate = (dateString) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
+  const getSeverityIcon = (severity) => {
+    switch (severity) {
+      case 'high':
+        return <AlertTriangle className="w-5 h-5" />;
+      case 'medium':
+        return <Info className="w-5 h-5" />;
+      case 'low':
+        return <Shield className="w-5 h-5" />;
+      default:
+        return <Info className="w-5 h-5" />;
+    }
+  };
+
+  // Mock data for demo purposes
+  const mockAlerts = [
+    {
+      id: 1,
+      title: 'Dengue Outbreak Alert',
+      description: 'Increased dengue cases reported in urban areas. Take preventive measures.',
+      location: 'Assam, Guwahati',
+      severity: 'high',
+      date: new Date().toISOString(),
+      affectedAreas: ['Guwahati', 'Dibrugarh', 'Silchar'],
+      preventionTips: ['Use mosquito nets', 'Remove stagnant water', 'Wear full-sleeve clothes'],
+      casesReported: 245,
+      trend: 'increasing'
+    },
+    {
+      id: 2,
+      title: 'Malaria Prevention Advisory',
+      description: 'Monsoon season increases malaria risk. Follow prevention guidelines.',
+      location: 'Bihar, Patna',
+      severity: 'medium',
+      date: new Date(Date.now() - 86400000).toISOString(),
+      affectedAreas: ['Patna', 'Gaya', 'Muzaffarpur'],
+      preventionTips: ['Use bed nets', 'Apply repellent', 'Seek immediate treatment for fever'],
+      casesReported: 89,
+      trend: 'stable'
+    },
+    {
+      id: 3,
+      title: 'Seasonal Flu Advisory',
+      description: 'Winter season flu cases on the rise. Get vaccinated and maintain hygiene.',
+      location: 'West Bengal, Kolkata',
+      severity: 'low',
+      date: new Date(Date.now() - 172800000).toISOString(),
+      affectedAreas: ['Kolkata', 'Howrah', 'Durgapur'],
+      preventionTips: ['Wash hands frequently', 'Avoid crowded places', 'Get flu vaccination'],
+      casesReported: 156,
+      trend: 'decreasing'
+    }
+  ];
+
+  const uniqueLocations = [...new Set(alerts.map(alert => alert.location.split(',')[0]))];
+
+  return (
+    <div className="min-h-screen pt-16 bg-gradient-to-br from-red-50 via-white to-orange-50">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Header */}
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-8"
+        >
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900 mb-2">Health Alerts</h1>
+              <p className="text-gray-600">Stay informed about health outbreaks and prevention measures in your area</p>
+            </div>
+            
+            <div className="flex items-center space-x-3 mt-4 sm:mt-0">
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={toggleNotifications}
+                className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-colors ${
+                  notificationsEnabled 
+                    ? 'bg-green-100 text-green-800 hover:bg-green-200' 
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+              >
+                {notificationsEnabled ? <Bell className="w-4 h-4" /> : <BellOff className="w-4 h-4" />}
+                <span className="text-sm font-medium">
+                  {notificationsEnabled ? 'Notifications On' : 'Enable Notifications'}
+                </span>
+              </motion.button>
+              
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={fetchAlerts}
+                disabled={loading}
+                className="flex items-center space-x-2 px-4 py-2 bg-blue-100 text-blue-800 hover:bg-blue-200 rounded-lg transition-colors disabled:opacity-50"
+              >
+                <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+                <span className="text-sm font-medium">Refresh</span>
+              </motion.button>
+            </div>
+          </div>
+
+          {/* Last Updated */}
+          <div className="flex items-center space-x-2 text-sm text-gray-500">
+            <Clock className="w-4 h-4" />
+            <span>Last updated: {formatDate(lastUpdated)}</span>
+          </div>
+        </motion.div>
+
+        {/* Filters */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-white rounded-2xl shadow-lg p-6 mb-8"
+        >
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+            {/* Search */}
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+              <input
+                type="text"
+                placeholder="Search alerts..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
+
+            {/* Language Filter */}
+            <div className="relative">
+              <Globe className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+              <select
+                value={selectedLanguage}
+                onChange={(e) => setSelectedLanguage(e.target.value)}
+                className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none"
+              >
+                {supportedLanguages.map(lang => (
+                  <option key={lang.code} value={lang.code}>
+                    {lang.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Severity Filter */}
+            <select
+              value={selectedSeverity}
+              onChange={(e) => setSelectedSeverity(e.target.value)}
+              className="px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              <option value="all">All Severities</option>
+              <option value="high">High Risk</option>
+              <option value="medium">Medium Risk</option>
+              <option value="low">Low Risk</option>
+            </select>
+
+            {/* Location Filter */}
+            <select
+              value={selectedLocation}
+              onChange={(e) => setSelectedLocation(e.target.value)}
+              className="px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              <option value="all">All Locations</option>
+              {uniqueLocations.map(location => (
+                <option key={location} value={location}>{location}</option>
+              ))}
+            </select>
+
+            {/* Results Count */}
+            <div className="flex items-center justify-center px-4 py-2 bg-gray-50 rounded-lg">
+              <span className="text-sm text-gray-600">
+                {filteredAlerts.length} alert{filteredAlerts.length !== 1 ? 's' : ''} found
+              </span>
+            </div>
+          </div>
+        </motion.div>
+
+        {/* Alerts Grid */}
+        {loading ? (
+          <div className="flex items-center justify-center py-12">
+            <div className="text-center">
+              <RefreshCw className="w-8 h-8 animate-spin text-blue-500 mx-auto mb-4" />
+              <p className="text-gray-600">Loading health alerts...</p>
+            </div>
+          </div>
+        ) : filteredAlerts.length === 0 ? (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="text-center py-12"
+          >
+            <Shield className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+            <h3 className="text-xl font-semibold text-gray-900 mb-2">No Alerts Found</h3>
+            <p className="text-gray-600">No health alerts match your current filters. This is good news!</p>
+          </motion.div>
+        ) : (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <AnimatePresence>
+              {filteredAlerts.map((alert, index) => (
+                <motion.div
+                  key={alert.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -20 }}
+                  transition={{ duration: 0.3, delay: index * 0.1 }}
+                  whileHover={{ y: -5 }}
+                  className={`card p-6 border-l-4 ${severityBgColors[alert.severity]} border-l-${alert.severity === 'high' ? 'red' : alert.severity === 'medium' ? 'orange' : 'yellow'}-500`}
+                >
+                  {/* Alert Header */}
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="flex items-center space-x-3">
+                      <div className={`p-2 rounded-lg bg-gradient-to-r ${severityColors[alert.severity]} text-white`}>
+                        {getSeverityIcon(alert.severity)}
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-semibold text-gray-900">{alert.title}</h3>
+                        <div className="flex items-center space-x-2 text-sm text-gray-500">
+                          <MapPin className="w-4 h-4" />
+                          <span>{alert.location}</span>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className={`px-3 py-1 rounded-full text-xs font-medium ${severityTextColors[alert.severity]} ${severityBgColors[alert.severity]}`}>
+                      {alert.severity.toUpperCase()}
+                    </div>
+                  </div>
+
+                  {/* Alert Description */}
+                  <p className="text-gray-700 mb-4 leading-relaxed">{alert.description}</p>
+
+                  {/* Statistics */}
+                  <div className="grid grid-cols-2 gap-4 mb-4">
+                    <div className="flex items-center space-x-2">
+                      <Users className="w-4 h-4 text-gray-500" />
+                      <span className="text-sm text-gray-600">
+                        {alert.casesReported} cases reported
+                      </span>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <TrendingUp className={`w-4 h-4 ${
+                        alert.trend === 'increasing' ? 'text-red-500' : 
+                        alert.trend === 'decreasing' ? 'text-green-500' : 'text-gray-500'
+                      }`} />
+                      <span className="text-sm text-gray-600 capitalize">
+                        {alert.trend}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Affected Areas */}
+                  <div className="mb-4">
+                    <h4 className="text-sm font-medium text-gray-900 mb-2">Affected Areas:</h4>
+                    <div className="flex flex-wrap gap-2">
+                      {alert.affectedAreas?.map((area, idx) => (
+                        <span key={idx} className="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded-full">
+                          {area}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Prevention Tips */}
+                  <div className="mb-4">
+                    <h4 className="text-sm font-medium text-gray-900 mb-2">Prevention Tips:</h4>
+                    <ul className="space-y-1">
+                      {alert.preventionTips?.slice(0, 3).map((tip, idx) => (
+                        <li key={idx} className="flex items-start space-x-2 text-sm text-gray-600">
+                          <div className="w-1.5 h-1.5 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
+                          <span>{tip}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  {/* Footer */}
+                  <div className="flex items-center justify-between pt-4 border-t border-gray-200">
+                    <div className="flex items-center space-x-2 text-sm text-gray-500">
+                      <Calendar className="w-4 h-4" />
+                      <span>{formatDate(alert.date)}</span>
+                    </div>
+                    
+                    <motion.button
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      className="flex items-center space-x-2 text-blue-600 hover:text-blue-800 text-sm font-medium"
+                    >
+                      <span>Learn More</span>
+                      <ExternalLink className="w-4 h-4" />
+                    </motion.button>
+                  </div>
+                </motion.div>
+              ))}
+            </AnimatePresence>
+          </div>
+        )}
+
+        {/* Emergency Contact */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mt-12 bg-gradient-to-r from-red-500 to-red-600 rounded-2xl p-6 text-white"
+        >
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-xl font-semibold mb-2">Emergency Health Services</h3>
+              <p className="text-red-100">For immediate medical assistance, contact your local health authorities</p>
+            </div>
+            <div className="text-right">
+              <div className="text-2xl font-bold">108</div>
+              <div className="text-sm text-red-100">Emergency Helpline</div>
+            </div>
+          </div>
+        </motion.div>
+      </div>
+    </div>
+  );
+};
+
+export default Alerts;

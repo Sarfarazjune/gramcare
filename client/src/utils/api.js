@@ -1,0 +1,74 @@
+// API configuration utility
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5001';
+
+// Helper function to make API calls
+export const apiCall = async (endpoint, options = {}) => {
+  const url = `${API_BASE_URL}${endpoint}`;
+  
+  const defaultOptions = {
+    headers: {
+      'Content-Type': 'application/json',
+      ...options.headers,
+    },
+  };
+
+  const config = {
+    ...defaultOptions,
+    ...options,
+    headers: {
+      ...defaultOptions.headers,
+      ...options.headers,
+    },
+  };
+
+  try {
+    const response = await fetch(url, config);
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('API call failed:', error);
+    throw error;
+  }
+};
+
+// Specific API functions
+export const chatAPI = {
+  sendMessage: (message, language, userId, sessionId) => 
+    apiCall('/chat', {
+      method: 'POST',
+      body: JSON.stringify({
+        message,
+        language,
+        userId,
+        sessionId
+      })
+    }),
+    
+  getSupportedLanguages: () => 
+    apiCall('/chat/languages'),
+    
+  detectLanguage: (text) => 
+    apiCall('/chat/detect-language', {
+      method: 'POST',
+      body: JSON.stringify({ text })
+    })
+};
+
+export const alertsAPI = {
+  getActiveAlerts: (params) => {
+    const queryString = new URLSearchParams(params).toString();
+    return apiCall(`/alerts/active?${queryString}`);
+  }
+};
+
+export const analyticsAPI = {
+  getOverview: (range) => 
+    apiCall(`/analytics/overview?range=${range}`)
+};
+
+export default { apiCall, chatAPI, alertsAPI, analyticsAPI };

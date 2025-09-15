@@ -1,0 +1,73 @@
+import React from 'react';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { Toaster } from 'react-hot-toast';
+import Navbar from './components/Navbar';
+import BottomNavigation from './components/BottomNavigation';
+import Home from './pages/Home';
+import Chat from './pages/Chat';
+import Alerts from './pages/Alerts';
+import Dashboard from './pages/Dashboard';
+import About from './pages/About';
+import AdminDashboard from './pages/AdminDashboard';
+import './App.css';
+
+function App() {
+  return (
+    <Router>
+      <div className="App min-h-screen bg-gradient-to-br from-blue-50 via-white to-green-50">
+        {/* Navigation - Always use mobile bottom nav */}
+        
+        <main className="relative pb-20">
+          <Routes>
+            <Route path="/" element={<Home />} />
+            <Route path="/chat" element={<Chat />} />
+            <Route path="/alerts" element={<Alerts />} />
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/about" element={<About />} />
+            <Route path="/admin" element={<AdminDashboard />} />
+          </Routes>
+        </main>
+        
+        {/* Bottom Navigation for all screen sizes */}
+        <BottomNavigation />
+        
+        {/* Toast notifications */}
+        <Toaster
+          position="top-right"
+          toastOptions={{
+            duration: 4000,
+            style: {
+              background: '#363636',
+              color: '#fff',
+              borderRadius: '12px',
+              padding: '16px',
+              fontSize: '14px',
+              maxWidth: '400px'
+            },
+            success: {
+              iconTheme: {
+                primary: '#10b981',
+                secondary: '#fff'
+              }
+            },
+            error: {
+              iconTheme: {
+                primary: '#ef4444',
+                secondary: '#fff'
+              }
+            }
+          }}
+        />
+        
+        {/* Background decorative elements */}
+        <div className="fixed inset-0 pointer-events-none overflow-hidden">
+          <div className="absolute -top-40 -right-40 w-80 h-80 bg-blue-200 rounded-full mix-blend-multiply filter blur-xl opacity-30 animate-blob"></div>
+          <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-green-200 rounded-full mix-blend-multiply filter blur-xl opacity-30 animate-blob animation-delay-2000"></div>
+          <div className="absolute top-40 left-40 w-80 h-80 bg-purple-200 rounded-full mix-blend-multiply filter blur-xl opacity-30 animate-blob animation-delay-4000"></div>
+        </div>
+      </div>
+    </Router>
+  );
+}
+
+export default App;

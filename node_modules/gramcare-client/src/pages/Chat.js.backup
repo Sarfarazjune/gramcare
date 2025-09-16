@@ -1,0 +1,477 @@
+import React, { useState, useEffect, useRef } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { 
+  Send, 
+  Bot, 
+  User, 
+  Loader, 
+  Mic, 
+  MicOff,
+} from 'lucide-react';
+import toast from 'react-hot-toast';
+import { chatAPI } from '../utils/api';
+import LanguageSelection from '../components/LanguageSelection';
+
+const Chat = () => {
+  const [languageSelected, setLanguageSelected] = useState(false);
+  const [messages, setMessages] = useState([]);
+  const [inputMessage, setInputMessage] = useState('');
+  const [isTyping, setIsTyping] = useState(false);
+  const [isListening, setIsListening] = useState(false);
+  const [currentLanguage, setCurrentLanguage] = useState('en');
+  const [supportedLanguages, setSupportedLanguages] = useState({});
+  const [autoDetectLanguage] = useState(true);
+  const messagesEndRef = useRef(null);
+  const ws = useRef(null);
+  const [showPermissionRequest, setShowPermissionRequest] = useState(true);
+  const [whatsappNumber, setWhatsappNumber] = useState('');
+  const [smsNumber, setSmsNumber] = useState('');
+  const [showSmsPermissionRequest, setShowSmsPermissionRequest] = useState(false);
+  const [messageType, setMessageType] = useState('web'); // 'web', 'whatsapp', 'sms'
+
+  const quickReplies = [
+    { text: 'Dengue symptoms', icon: '🦟' },
+    { text: 'Malaria prevention', icon: '🛡️' },
+    { text: 'Child vaccination', icon: '💉' },
+    { text: 'Diarrhea treatment', icon: '💊' },
+    { text: 'Nearest health center', icon: '🏥' },
+    { text: 'COVID-19 guidelines', icon: '😷' }
+  ];
+
+
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
+
+  useEffect(() => {
+    // Check if WhatsApp number is already stored
+    const storedWhatsappNumber = localStorage.getItem('whatsappNumber');
+    if (storedWhatsappNumber) {
+      setWhatsappNumber(storedWhatsappNumber);
+      setShowPermissionRequest(false);
+    }
+
+    // Check if SMS number is already stored
+    const storedSmsNumber = localStorage.getItem('smsNumber');
+    if (storedSmsNumber) {
+      setSmsNumber(storedSmsNumber);
+      setShowSmsPermissionRequest(false);
+    }
+
+    // Fetch supported languages on component mount
+    fetchSupportedLanguages();
+
+    // WebSocket connection
+    ws.current = new WebSocket(process.env.REACT_APP_WEBSOCKET_URL || 'ws://localhost:5001');
+
+    ws.current.onopen = () => {
+      console.log('WebSocket connected');
+    };
+
+    ws.current.onmessage = event => {
+      const message = JSON.parse(event.data);
+      if (message.type === 'whatsapp_message') {
+        setMessages(prev => [
+          ...prev,
+          {
+            id: Date.now(),
+            type: 'whatsapp_user',
+            content: `From ${message.from}: ${message.message}`,
+            timestamp: new Date(),
+            language: 'en'
+          },
+          {
+            id: Date.now() + 1,
+            type: 'whatsapp_bot',
+            content: `AI Response: ${message.response}`,
+            timestamp: new Date(),
+            language: 'en'
+          }
+        ]);
+      }
+    };
+
+    ws.current.onclose = () => {
+      console.log('WebSocket disconnected');
+    };
+
+    ws.current.onerror = error => {
+      console.error('WebSocket error:', error);
+    };
+
+    return () => {
+      ws.current.close();
+    };
+  }, []);
+
+  const fetchSupportedLanguages = async () => {
+    try {
+      const data = await chatAPI.getSupportedLanguages();
+      if (data.success) {
+        setSupportedLanguages(data.languages);
+      }
+    } catch (error) {
+      console.error('Error fetching supported languages:', error);
+    }
+  };
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  const handlePermissionGrant = () => {
+    if (whatsappNumber.trim()) {
+      localStorage.setItem('whatsappNumber', whatsappNumber);
+      setShowPermissionRequest(false);
+      toast.success('WhatsApp integration enabled!');
+    } else {
+      toast.error('Please enter a valid WhatsApp number.');
+    }
+  };
+
+  const handleSmsPermissionGrant = () => {
+    if (smsNumber.trim()) {
+      localStorage.setItem('smsNumber', smsNumber);
+      setShowSmsPermissionRequest(false);
+      toast.success('SMS integration enabled!');
+    } else {
+      toast.error('Please enter a valid SMS number.');
+    }
+  };
+
+  const sendMessage = async (messageText = inputMessage) => {
+    if (!messageText.trim()) return;
+
+    // Validate destination for WhatsApp/SMS
+    if (messageType === 'whatsapp' && !whatsappNumber) {
+      setShowPermissionRequest(true);
+      toast.error('Please add your WhatsApp number first.');
+      return;
+    }
+    if (messageType === 'sms' && !smsNumber) {
+      setShowSmsPermissionRequest(true);
+      toast.error('Please add your SMS number first.');
+      return;
+    }
+
+    const userMessage = {
+      id: Date.now(),
+      type: 'user',
+      content: messageText,
+      timestamp: new Date(),
+      language: currentLanguage
+    };
+
+    // Clear any previous error messages and add the new user message
+    setMessages(prev => [...prev.filter(msg => !msg.isError), userMessage]);
+    const currentMessage = messageText;
+    setInputMessage('');
+    setIsTyping(true);
+    
+    try {
+      let data;
+      if (messageType === 'sms') {
+        data = await chatAPI.sendSmsMessage(
+          smsNumber,
+          currentMessage,
+          autoDetectLanguage ? 'auto' : currentLanguage
+        );
+      } else {
+        data = await chatAPI.sendMessage(
+          currentMessage,
+          autoDetectLanguage ? 'auto' : currentLanguage,
+          'demo-user',
+          'web-session-' + Date.now(),
+          messageType === 'whatsapp' ? whatsappNumber : undefined
+        );
+      }
+      
+      if (data.success) {
+        const botMessage = {
+          id: Date.now() + 1,
+          type: 'bot',
+          content: data.response || 'I apologize, but I\'m having trouble processing your request right now. Please try again.',
+          timestamp: new Date(),
+          language: data.language || currentLanguage,
+          confidence: data.confidence,
+          category: data.category,
+          suggestions: data.suggestions || []
+        };
+
+        setMessages(prev => [...prev, botMessage]);
+        
+        // Update detected language if auto-detect is enabled
+        if (autoDetectLanguage && data.language && data.language !== currentLanguage) {
+          setCurrentLanguage(data.language);
+        }
+      } else {
+        throw new Error(data.error || 'Failed to get response');
+      }
+    } catch (error) {
+      console.error('Error sending message:', error);
+      const errorMessage = {
+        id: Date.now() + 1,
+        type: 'bot',
+        content: 'I\'m sorry, I\'m having trouble connecting right now. Please check your internet connection and try again.',
+        timestamp: new Date(),
+        language: currentLanguage,
+        isError: true
+      };
+
+      setMessages(prev => [...prev, errorMessage]);
+      toast.error('Connection error. Please try again.');
+    } finally {
+      setIsTyping(false);
+    }
+  };
+
+  const toggleListening = () => {
+    if ('webkitSpeechRecognition' in window) {
+      const recognition = new window.webkitSpeechRecognition();
+      recognition.continuous = false;
+      recognition.interimResults = false;
+      recognition.lang = currentLanguage === 'hi' ? 'hi-IN' : 'en-US';
+
+      if (!isListening) {
+        setIsListening(true);
+        recognition.start();
+        toast.success('Listening... Speak now!');
+
+        recognition.onresult = (event) => {
+          const transcript = event.results[0][0].transcript;
+          setInputMessage(transcript);
+          setIsListening(false);
+        };
+
+        recognition.onerror = () => {
+          setIsListening(false);
+          toast.error('Voice recognition failed. Please try again.');
+        };
+
+        recognition.onend = () => {
+          setIsListening(false);
+        };
+      } else {
+        recognition.stop();
+        setIsListening(false);
+      }
+    } else {
+      toast.error('Voice recognition is not supported in your browser.');
+    }
+  };
+
+  const handleLanguageSelection = (selectedLanguage) => {
+    setCurrentLanguage(selectedLanguage);
+    setLanguageSelected(true);
+    
+    // Initialize chat with welcome message in selected language
+    const welcomeMessages = {
+      'en': 'Hello! I\'m your GramCare health assistant. I can help you with any questions, provide information, and share helpful tips. How can I assist you today?',
+      'hi': 'नमस्ते! मैं आपका ग्रामकेयर सहायक हूँ। मैं आपके किसी भी प्रश्न में मदद कर सकता हूँ, जानकारी प्रदान कर सकता हूँ और उपयोगी सुझाव दे सकता हूँ। आज मैं आपकी कैसे सहायता कर सकता हूँ?',
+      'bn': 'নমস্কার! আমি আপনার গ্রামকেয়ার সহায়ক। আমি আপনার যেকোনো প্রশ্নে সাহায্য করতে পারি, তথ্য প্রদান করতে পারি এবা সহায়ক পরামর্শ দিতে পারি। আজ আমি কীভাবে আপনাকে সহाয়ত করতে পারি?',
+      'as': 'নমস্কাৰ! মই আপোনাৰ গ্ৰামকেয়াৰ সহায়ক। মই আপোনাৰ যিকোনো প্রশ্নত সহায় কৰিব পাৰোঁ, তথ্য প্রদান কৰিব পাৰোঁ আৰু সহায়ক পৰামৰ্শ দিব পাৰোঁ। আজি মই আপোনাক কেনেকৈ সহায় কৰিব পাৰোঁ?',
+      'te': 'నమస్కారం! నేను మీ గ్రామకేయర్ సహాయకుడను। నేను మీ ఏ ప్రశ్నకైనా సహాయం చేయగలను, సమాచారం అందించగలను మరియు సహాయకరమైన సలహాలు ఇవ్వగలను। ఈరోజు నేను మీకు ఎలా సహాయం చేయగలను?'
+    };
+    
+    setMessages([{
+      id: 1,
+      type: 'bot',
+      content: welcomeMessages[selectedLanguage] || welcomeMessages['en'],
+      timestamp: new Date(),
+      language: selectedLanguage
+    }]);
+  };
+
+  // Show language selection screen if language not selected
+  if (!languageSelected) {
+    return <LanguageSelection onLanguageSelect={handleLanguageSelection} />;
+  }
+
+  return (
+    <div className="flex h-screen antialiased text-gray-800">
+      <div className="flex flex-row h-full w-full overflow-x-hidden">
+        <div className="flex flex-col flex-auto h-full p-6">
+          <div className="flex flex-col flex-auto flex-shrink-0 rounded-2xl bg-gray-50 h-full p-4">
+            <div className="flex flex-col h-full overflow-x-auto mb-4">
+              <div className="flex flex-col h-full">
+                {languageSelected ? (
+                  <>
+                    <div className="flex-1 p-4 overflow-y-auto custom-scrollbar" ref={messagesEndRef}>
+                      <AnimatePresence initial={false}>
+                        {messages.map((msg, index) => (
+                          <motion.div
+                            key={msg.id}
+                            layout
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -20 }}
+                            transition={{ duration: 0.3 }}
+                            className={`flex items-end mb-4 ${msg.type === 'user' ? 'justify-end' : 'justify-start'}`}
+                          >
+                            {msg.type === 'bot' && (
+                              <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gray-300 flex items-center justify-center mr-2">
+                                <Bot size={20} className="text-gray-600" />
+                              </div>
+                            )}
+                            {msg.type === 'whatsapp' && (
+                              <div className="flex-shrink-0 w-8 h-8 rounded-full bg-green-500 flex items-center justify-center mr-2">
+                                <img src="/whatsapp-icon.png" alt="WhatsApp" className="w-5 h-5" />
+                              </div>
+                            )}
+                            {msg.type === 'sms' && (
+                              <div className="flex-shrink-0 w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center mr-2">
+                                <img src="/sms-icon.png" alt="SMS" className="w-5 h-5" />
+                              </div>
+                            )}
+                            <div
+                              className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg shadow-md ${msg.type === 'user'
+                                  ? 'bg-blue-500 text-white'
+                                  : msg.type === 'whatsapp'
+                                    ? 'bg-green-100 text-gray-800'
+                                    : msg.type === 'sms'
+                                      ? 'bg-blue-100 text-gray-800'
+                                      : 'bg-gray-100 text-gray-800'
+                                }`}
+                            >
+                              <p className="text-sm">{msg.content}</p>
+                              <span className="block text-xs mt-1 opacity-75">
+                                {msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                              </span>
+                            </div>
+                            {msg.type === 'user' && (
+                              <div className="flex-shrink-0 w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center ml-2">
+                                <User size={20} className="text-white" />
+                              </div>
+                            )}
+                          </motion.div>
+                        ))}
+                        {isTyping && (
+                          <motion.div
+                            layout
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.3 }}
+                            className="flex items-end mb-4 justify-start"
+                          >
+                            <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gray-300 flex items-center justify-center mr-2">
+                              <Bot size={20} className="text-gray-600" />
+                            </div>
+                            <div className="max-w-xs lg:max-w-md px-4 py-2 rounded-lg shadow-md bg-gray-100 text-gray-800">
+                              <Loader className="animate-spin" size={20} />
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
+
+                    {/* Permission Request Modal */}
+                    {showPermissionRequest && (
+                      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                        <div className="bg-white p-6 rounded-lg shadow-xl max-w-sm w-full mx-4">
+                          <h2 className="text-xl font-bold mb-4">WhatsApp Integration</h2>
+                          <p className="mb-4">To enable seamless communication, please provide your WhatsApp number. This allows you to send and receive messages directly through the app.</p>
+                          <input
+                            type="text"
+                            className="w-full p-2 border border-gray-300 rounded-md mb-4 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            placeholder="Enter your WhatsApp number (e.g., +1234567890)"
+                            value={whatsappNumber}
+                            onChange={(e) => setWhatsappNumber(e.target.value)}
+                          />
+                          <button
+                            className="w-full bg-blue-500 text-white py-2 px-4 rounded-md hover:bg-blue-600 transition-colors duration-200"
+                            onClick={handlePermissionGrant}
+                          >
+                            Enable WhatsApp
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* SMS Permission Request Modal */}
+                    {showSmsPermissionRequest && (
+                      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                        <div className="bg-white p-6 rounded-lg shadow-xl max-w-sm w-full mx-4">
+                          <h2 className="text-xl font-bold mb-4">SMS Integration</h2>
+                          <p className="mb-4">Please provide your SMS-capable phone number. This allows you to send and receive messages via SMS through the app.</p>
+                          <input
+                            type="text"
+                            className="w-full p-2 border border-gray-300 rounded-md mb-4 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            placeholder="Enter your phone number (e.g., +1234567890)"
+                            value={smsNumber}
+                            onChange={(e) => setSmsNumber(e.target.value)}
+                          />
+                          <button
+                            className="w-full bg-blue-500 text-white py-2 px-4 rounded-md hover:bg-blue-600 transition-colors duration-200"
+                            onClick={handleSmsPermissionGrant}
+                          >
+                            Enable SMS
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="p-4 border-t border-gray-200 bg-white">
+                      <div className="flex space-x-2 mb-4 overflow-x-auto custom-scrollbar pb-2">
+                        {quickReplies.map((reply, index) => (
+                          <button
+                            key={index}
+                            onClick={() => sendMessage(reply.text)}
+                            className="flex items-center bg-gray-100 hover:bg-gray-200 text-gray-800 text-sm px-3 py-1 rounded-full transition-colors duration-200 flex-shrink-0"
+                          >
+                            <span className="mr-1 text-base">{reply.icon}</span> {reply.text}
+                          </button>
+                        ))}
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <button
+                          onClick={toggleListening}
+                          className="p-2 rounded-full bg-red-100 text-red-600 hover:bg-red-200 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-red-500"
+                          title={isListening ? 'Stop Listening' : 'Start Listening'}
+                        >
+                          {isListening ? <MicOff size={20} /> : <Mic size={20} />}
+                        </button>
+                        <select
+                          value={messageType}
+                          onChange={(e) => setMessageType(e.target.value)}
+                          className="p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        >
+                          <option value="web">Web Chat</option>
+                          <option value="whatsapp">WhatsApp</option>
+                          <option value="sms">SMS</option>
+                        </select>
+                        <input
+                          type="text"
+                          className="flex-1 p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          placeholder="Type your message..."
+                          value={inputMessage}
+                          onChange={(e) => setInputMessage(e.target.value)}
+                          onKeyPress={(e) => {
+                            if (e.key === 'Enter') {
+                              sendMessage();
+                            }
+                          }}
+                        />
+                        <button
+                          onClick={() => sendMessage()}
+                          className="p-2 rounded-full bg-blue-500 text-white hover:bg-blue-600 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          title="Send Message"
+                        >
+                          <Send size={20} />
+                        </button>
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <LanguageSelection onLanguageSelect={() => setLanguageSelected(true)} supportedLanguages={supportedLanguages} setCurrentLanguage={setCurrentLanguage} />
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default Chat;

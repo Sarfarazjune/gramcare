@@ -1,0 +1,4 @@
+[2025-09-15T19:55:39.671Z] ERROR: Error sending SMS: {"status":401,"code":20003,"moreInfo":"https://www.twilio.com/docs/errors/20003"}
+[2025-09-15T19:59:12.541Z] ERROR: Error sending SMS: {"status":400,"code":21211,"moreInfo":"https://www.twilio.com/docs/errors/21211"}
+[2025-09-15T20:00:49.356Z] ERROR: Error sending SMS: {"status":400,"code":21659,"moreInfo":"https://www.twilio.com/docs/errors/21659"}
+[2025-09-16T03:00:12.411Z] ERROR: Error sending verification code: {"status":400,"code":21211,"moreInfo":"https://www.twilio.com/docs/errors/21211"}
